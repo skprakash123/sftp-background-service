@@ -1,0 +1,25 @@
+# Service deployment yml file configuration
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sftp-background-service
+  namespace: default
+  labels:
+    app: sftp-background-service
+spec:
+  replicas: 2 # number of pods
+  selector:
+    matchLabels:
+      app: sftp-background-service
+  template:
+    metadata:
+      labels:
+        app: sftp-background-service
+    spec:
+      containers:
+        - name: docker-image-1
+          image: gcr.io/cron0411-383410/docker-image:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+              protocol: TCP

@@ -1,0 +1,24 @@
+# Background job yml file configuration
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cronv2
+spec:
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: cronv2
+        spec:
+          containers:
+            - name: cronv2
+              image: gcr.io/cron0411-383410/docker-image:latest
+              imagePullPolicy: IfNotPresent
+              command:
+                - npm
+                - run
+                - start
+          restartPolicy: OnFailure
+  schedule: "0 */12 * * *"
+  successfulJobsHistoryLimit: 3
