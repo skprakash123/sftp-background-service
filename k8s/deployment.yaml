@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: docker-image-1
-          image: gcr.io/cron0411-383410/docker-image:latest
+          image: gcr.io/ge-dms-new/docker-image:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 3000

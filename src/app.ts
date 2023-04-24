@@ -1,5 +1,6 @@
 import express from 'express';
 import * as bodyParser from 'body-parser';
+import axios from 'axios';
 const dotenv = require("dotenv").config();
 const Client = require("ssh2-sftp-client");
 const sftp = new Client();
@@ -11,6 +12,7 @@ const storage = new Storage({
 });
 
 if (!dotenv) {
+
   throw new Error("Unable to use dot env lib");
 }
 // Set the NODE_ENV to 'development' by default
@@ -61,8 +63,8 @@ app.post("/", (req: any, res: any) => {
   });
 });
 
-app.listen(3003, function () {
-  console.log("server is running on port 3003");
+app.listen(3000, function () {
+  console.log("server is running on port 3000");
   downloadFolder();
 });
 
@@ -78,13 +80,12 @@ async function downloadFolder() {
       secure: true,
     });
     console.log("Connected to SFTP server");
-    console.log(process.env.ftpServerPath, process.env.allFileExtension);
     //This will list all the files present in the SFTP server
     const fileList = await sftp.list(process.env.ftpServerPath);
-    console.log("Retrieved remote folder contents:", fileList);
+
+    const allFiles: string[] = [];
 
     for (let i = 0; i < fileList.length; i++) {
-      console.log("file object", fileList[i].name);
       const extension = fileList[i].name.split(".")[1];
       const fileName = fileList[i].name.split(".")[0];
       const allextension = process.env.allFileExtension || "txt";
@@ -98,10 +99,15 @@ async function downloadFolder() {
             `${process.env.ftpServerPath}${fileList[i].name}`,
             `${process.env.destinationPath}${fileList[i].name}`
           )
+          .then(() => {
+            console.log("in then of sftp get");
+            allFiles.push(`${process.env.destinationPath}${fileList[i].name}`);
+          })
           .catch((err: any) => console.log("error in file get from sftp", err));
       }
     }
     console.log("Folder download complete");
+    await doPostRequest({downloadedFiles: allFiles});
   } catch (err) {
     console.error(err);
   } finally {
@@ -109,3 +115,11 @@ async function downloadFolder() {
     console.log("Disconnected from SFTP server");
   }
 }
+
+async function doPostRequest(payload: any) {
+  console.log("payload", payload);
+  let res = await axios.post(`${process.env.apiURL}`, payload);
+  let data = res;
+  console.log(data);
+}
+

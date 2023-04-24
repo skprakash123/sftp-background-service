@@ -13,7 +13,7 @@ spec:
         spec:
           containers:
             - name: cronv2
-              image: gcr.io/cron0411-383410/docker-image:latest
+              image: gcr.io/ge-dms-new/docker-image:latest
               imagePullPolicy: IfNotPresent
               command:
                 - npm
