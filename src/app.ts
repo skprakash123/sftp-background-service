@@ -4,14 +4,23 @@ import axios from "axios";
 const dotenv = require("dotenv").config();
 const Client = require("ssh2-sftp-client");
 const sftp = new Client();
-const { Storage } = require("@google-cloud/storage");
+import { Storage } from "@google-cloud/storage";
 import { PubSub } from "@google-cloud/pubsub";
-//GCS - Cloud storage details
-const storage = new Storage({
-  projectId: "ge-dms-384808",
-});
 
-const pubsub = new PubSub();
+const gcpConfig = {
+  projectId: process.env.PROJECT_ID,
+  credentials: {
+    token_url: process.env.TOKEN_URL,
+    client_email: process.env.CLIENT_EMAIL,
+    client_id: process.env.CLIENT_ID,
+    private_key: process.env.PRIVATE_KEY,
+  },
+};
+
+//GCS - Cloud storage details
+const storage = new Storage(gcpConfig);
+
+const pubsub = new PubSub(gcpConfig);
 
 if (!dotenv) {
   throw new Error("Unable to use dot env lib");
@@ -20,7 +29,7 @@ if (!dotenv) {
 process.env.NODE_ENV = "development";
 //Bucket name should read from the environment variables
 const bucketName = process.env.bucketName;
-const Bucket = storage.bucket(bucketName);
+const Bucket = storage.bucket(bucketName!);
 
 const app = express();
 app.use(
