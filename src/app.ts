@@ -1,18 +1,19 @@
-import express from 'express';
-import * as bodyParser from 'body-parser';
-import axios from 'axios';
+import express from "express";
+import * as bodyParser from "body-parser";
+import axios from "axios";
 const dotenv = require("dotenv").config();
 const Client = require("ssh2-sftp-client");
 const sftp = new Client();
 const { Storage } = require("@google-cloud/storage");
+import { PubSub } from "@google-cloud/pubsub";
 //GCS - Cloud storage details
 const storage = new Storage({
-  projectId: "ge-dms-new",
-  keyFilename: "./google-cloud-key.json",
+  projectId: "ge-dms-384808",
 });
 
-if (!dotenv) {
+const pubsub = new PubSub();
 
+if (!dotenv) {
   throw new Error("Unable to use dot env lib");
 }
 // Set the NODE_ENV to 'development' by default
@@ -32,26 +33,42 @@ app.use(bodyParser.json());
 
 //This POST API will upload the downloaded files to Google storage area in the bucket
 app.post("/", (req: any, res: any) => {
-  console.log(req.body.downloadedFiles);
+  console.log("req.body.downloadedFiles", req.body.downloadedFiles);
   for (let i = 0; i < req.body.downloadedFiles.length; i++) {
     const fileName = req.body.downloadedFiles[i].split(".")[0];
     console.log("file object", req.body.downloadedFiles[i]);
     //On the cloud storage area based on the file name we are storing data in different folders
     const destinationFolder = fileName.includes("QAR")
-      ? "QAR_data_files"
-      : "ODW_data_files";
+      ? "QAR_data_files/"
+      : "ODW_data_files/";
     console.log("destinationFolder", destinationFolder);
     //This function will upload the files to bucket
     Bucket.upload(
-      `${req.body.downloadedFiles[i]}`,
+      `${process.env.destinationPath}${req.body.downloadedFiles[i]}`,
       {
         destination: `${destinationFolder}${req.body.downloadedFiles[i]}`,
       },
-      function (err: any, file: any) {
+      function(err: any, file: any) {
         if (err) {
           console.error(`Error uploading file: ${err}`);
         } else {
           console.log(`File uploaded to ${bucketName}.`);
+          const payload = JSON.stringify({
+            fileType: fileName.includes("QAR") ? "QAR" : "ODW",
+            fileName: req.body.downloadedFiles[i],
+            bucketName,
+            fileLocation: `https://storage.googleapis.com/${bucketName}/${req.body.downloadedFiles[i]}`,
+          });
+          const payloadBuffer = Buffer.from(payload);
+          pubsub
+            .topic("ge-queue")
+            .publishMessage({ data: payloadBuffer }, (error, messageId) => {
+              if (error) {
+                console.log("Publish message Error", error);
+              } else {
+                console.log("Publish message Success messageId: ", messageId);
+              }
+            });
         }
         console.log(file, "This is file output");
       }
@@ -59,11 +76,34 @@ app.post("/", (req: any, res: any) => {
   }
   res.status(200).json({
     status: 200,
-    message: "Files uploaded successfully"
+    message: "Files uploaded successfully",
   });
 });
 
-app.listen(3000, function () {
+app.post("/listen", (req: any, res: any) => {
+  try {
+    const message = req.body ? req.body.message : null;
+    console.log("message", message);
+    if (message) {
+      const buffer = Buffer.from(message.data, "base64").toString();
+      const data = JSON.parse(buffer!);
+      console.log("data", data);
+      console.log("Ack Message", message.messageId);
+      return res.status(200).json({ messageId: message.messageId, data: data });
+    } else {
+      return res.status(200).json({ data: "No message data found" });
+    }
+  } catch (error) {
+    console.log("Error in listen message", error);
+    return res.status(500).json({
+      code: 500,
+      status: "Internal Server Error",
+      message: error,
+    });
+  }
+});
+
+app.listen(3000, function() {
   console.log("server is running on port 3000");
   downloadFolder();
 });
@@ -73,9 +113,9 @@ async function downloadFolder() {
   try {
     //Connection to the SFTP server (This will be in configurable - For now it is static as we have demo SFTP server)
     await sftp.connect({
-      host: "dnt2.files.com",
+      host: "dnt3.files.com",
       port: 22,
-      user: "xobaxav793@lieboe.com",
+      user: "ruchita.dnt@yopmail.com",
       password: "Rns@19972906",
       secure: true,
     });
@@ -101,13 +141,13 @@ async function downloadFolder() {
           )
           .then(() => {
             console.log("in then of sftp get");
-            allFiles.push(`${process.env.destinationPath}${fileList[i].name}`);
+            allFiles.push(`${fileList[i].name}`);
           })
           .catch((err: any) => console.log("error in file get from sftp", err));
       }
     }
     console.log("Folder download complete");
-    await doPostRequest({downloadedFiles: allFiles});
+    await doPostRequest({ downloadedFiles: allFiles });
   } catch (err) {
     console.error(err);
   } finally {
@@ -122,4 +162,3 @@ async function doPostRequest(payload: any) {
   let data = res;
   console.log(data);
 }
-
