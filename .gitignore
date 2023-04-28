@@ -27,3 +27,6 @@ node_modules/
 
 # build folder
 build
+
+# Google Cloud File
+google-cloud-key.json
