@@ -84,7 +84,6 @@ app.post("/", (req: any, res: any) => {
               }
             });
         }
-        console.log(file, "This is file output");
       }
     );
   }
@@ -133,7 +132,7 @@ async function downloadFolder() {
     const fileArrays: String[] = [];
     const allextension = process.env.allFileExtension || "txt";
     //This will list all the files present in the SFTP server
-    await downloadFiles("/", fileArrays, allextension);
+    await downloadFiles(process.env.ftpServerPath!, fileArrays, allextension);
     console.log("fileArrays", fileArrays);
     await doPostRequest({ downloadedFiles: fileArrays });
   } catch (err) {
@@ -186,7 +185,7 @@ async function doPostRequest(payload: any) {
   console.log("payload", payload);
   let res = await axios.post(`${process.env.apiURL}`, payload);
   let data = res;
-  console.log(data);
+  // console.log(data);
 }
 
 app.listen(3000, function() {
