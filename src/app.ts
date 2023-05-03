@@ -50,28 +50,39 @@ app.use(bodyParser.json());
 app.post("/", (req: any, res: any) => {
   console.log("req.body.downloadedFiles", req.body.downloadedFiles);
   for (let i = 0; i < req.body.downloadedFiles.length; i++) {
-    const fileName = req.body.downloadedFiles[i].split(".")[0];
+    const parentFolderName = req.body.downloadedFiles[i].split("/")[0];
+    const fileName = req.body.downloadedFiles[i].split("/")[1];
+    const fileNameWithoutExt = req.body.downloadedFiles[i]
+      .split("/")[1]
+      .split(".")[0];
     //On the cloud storage area based on the file name we are storing data in different folders
-    const destinationFolder = fileName.includes("QAR")
-      ? "QAR_data_files/"
-      : "ODW_data_files/";
-    console.log("destinationFolder", destinationFolder);
+    const currentDate = new Date();
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth() + 1;
+    const date = currentDate.getDate();
+    const destinationFolder = `QAR/${parentFolderName}/${year}/${month}/${date}/`;
+    // const destinationFolder = fileNameWithoutExt.includes("QAR")
+    //   ? `QAR/${parentFolderName}/${year}/${month}/${date}/`
+    //   : "ODW_data_files/";
     //This function will upload the files to bucket
     Bucket.upload(
-      `${process.env.destinationPath}${req.body.downloadedFiles[i]}`,
+      `${process.env.destinationPath}${fileName}`,
       {
-        destination: `${destinationFolder}${req.body.downloadedFiles[i]}`,
+        destination: `${destinationFolder}${fileName}`,
       },
       function(err: any, file: any) {
         if (err) {
           console.error(`Error uploading file: ${err}`);
         } else {
           console.log(`File uploaded to ${bucketName}.`);
+
+          // send message to GCP Pub/Sub
           const payload = JSON.stringify({
-            fileType: fileName.includes("QAR") ? "QAR" : "ODW",
-            fileName: req.body.downloadedFiles[i],
+            fileType: "QAR",
+            // fileType: fileName.includes("QAR") ? "QAR" : "ODW",
+            fileName: fileName,
             bucketName,
-            fileLocation: `https://storage.googleapis.com/${bucketName}/${req.body.downloadedFiles[i]}`,
+            fileLocation: `https://storage.googleapis.com/${bucketName}/${destinationFolder}${fileName}`,
           });
           const payloadBuffer = Buffer.from(payload);
           pubsub
@@ -146,7 +157,7 @@ async function downloadFolder() {
 // Function for download all files from sftp.
 const downloadFiles = async (
   path: string,
-  filesArray: String[],
+  filesArray: any,
   allextension: string
 ) => {
   try {
@@ -157,10 +168,13 @@ const downloadFiles = async (
       const fileExtension = file.name.split(".")[1];
       const filePath = join(path, file.name);
       const stat = await sftp.stat(filePath);
-
+      // console.log("stat of ", file.name);
+      // console.log("stat", stat);
       if (stat.isDirectory) {
         await downloadFiles(filePath, filesArray, allextension);
       } else {
+        console.log("path ", path);
+        console.log("fileArrays", filesArray);
         if (
           allextension.includes("*") ||
           allextension.includes(fileExtension)
@@ -169,7 +183,18 @@ const downloadFiles = async (
             `${filePath}`,
             `${process.env.destinationPath}${file.name}`
           );
-          filesArray.push(file.name);
+          const removePath = path.replace(/\\/g, "");
+          // if (filesArray.length > 0) {
+          //   await filesArray.find((d: any, i: number) => {
+          //     if (d.folderName == path) {
+          //       filesArray[i].fileName.push(file.name);
+          //       return true;
+          //     }
+          //   });
+          // } else {
+          //   filesArray.push({ folderName: path, fileName: [] });
+          // }
+          filesArray.push(`${removePath}/${file.name}`);
         }
       }
     }
