@@ -1,0 +1,76 @@
+# Background job yml file configuration
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cronv2
+  namespace: default
+spec:
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: cronv2
+        spec:
+          containers:
+            - name: cronv2
+              image: gcr.io/ge-dms-385011/docker-image:latest
+              imagePullPolicy: IfNotPresent
+              command:
+                - npm
+                - run
+                - start
+              env:
+                - name: CLIENT_EMAIL
+                  valueFrom:
+                    secretKeyRef:
+                      name: sftp-service-secret
+                      key: CLIENT_EMAIL
+                - name: CLIENT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: sftp-service-secret
+                      key: CLIENT_ID
+                - name: PRIVATE_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: sftp-service-secret
+                      key: PRIVATE_KEY
+                - name: PROJECT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: sftp-service-secret
+                      key: PROJECT_ID
+                - name: TOKEN_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: sftp-service-secret
+                      key: TOKEN_URL
+                - name: allFileExtension
+                  valueFrom:
+                    secretKeyRef:
+                      name: sftp-service-secret
+                      key: allFileExtension
+                - name: apiURL
+                  valueFrom:
+                    secretKeyRef:
+                      name: sftp-service-secret
+                      key: apiURL
+                - name: bucketName
+                  valueFrom:
+                    secretKeyRef:
+                      name: sftp-service-secret
+                      key: bucketName
+                - name: destinationPath
+                  valueFrom:
+                    secretKeyRef:
+                      name: sftp-service-secret
+                      key: destinationPath
+                - name: ftpServerPath
+                  valueFrom:
+                    secretKeyRef:
+                      name: sftp-service-secret
+                      key: ftpServerPath
+          restartPolicy: OnFailure
+  schedule: "0 */12 * * *"
+  successfulJobsHistoryLimit: 3

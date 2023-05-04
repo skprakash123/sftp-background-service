@@ -3,6 +3,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: cronv2
+  namespace: dev
 spec:
   jobTemplate:
     spec:
@@ -13,7 +14,7 @@ spec:
         spec:
           containers:
             - name: cronv2
-              image: gcr.io/ge-dms-385011/docker-image:latest
+              image: gcr.io/clus-demo/docker-image:latest
               imagePullPolicy: IfNotPresent
               command:
                 - npm

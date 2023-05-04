@@ -132,10 +132,10 @@ async function downloadFolder() {
   try {
     //Connection to the SFTP server (This will be in configurable - For now it is static as we have demo SFTP server)
     await sftp.connect({
-      host: "dnt3.files.com",
+      host: "35.228.207.19",
       port: 22,
-      user: "ruchita.dnt@yopmail.com",
-      password: "Rns@19972906",
+      user: "user7",
+      password: "User7@123",
       secure: true,
     });
     console.log("Connected to SFTP server");
@@ -183,7 +183,7 @@ const downloadFiles = async (
             `${filePath}`,
             `${process.env.destinationPath}${file.name}`
           );
-          const removePath = path.replace(/\\/g, "");
+          const removePath = path.split("/")[1];
           // if (filesArray.length > 0) {
           //   await filesArray.find((d: any, i: number) => {
           //     if (d.folderName == path) {
@@ -210,7 +210,7 @@ async function doPostRequest(payload: any) {
   console.log("payload", payload);
   let res = await axios.post(`${process.env.apiURL}`, payload);
   let data = res;
-  // console.log(data);
+  console.log("API resp", data);
 }
 
 app.listen(3000, function() {
