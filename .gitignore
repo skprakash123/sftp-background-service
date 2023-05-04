@@ -30,3 +30,4 @@ build
 
 # Google Cloud File
 google-cloud-key.json
+k8s/secret.yml
