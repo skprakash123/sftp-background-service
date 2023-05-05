@@ -81,12 +81,12 @@ app.post("/", async (req: any, res: any) => {
       fileLocation: `https://storage.googleapis.com/${bucketName}/${destinationFolder}${fileName}`,
     });
     const payloadBuffer = Buffer.from(payload);
-    const sendMessage = await pubsub
-      .topic("ge-queue")
-      .publishMessage({ data: payloadBuffer });
-    console.log("sendMessage", sendMessage);
+    // const sendMessage = await pubsub
+    //   .topic("ge-queue")
+    //   .publishMessage({ data: payloadBuffer });
+    // console.log("sendMessage", sendMessage);
   }
-  res.status(200).json({
+  return res.status(200).json({
     status: 200,
     message: "Files uploaded successfully",
   });
@@ -190,10 +190,21 @@ const downloadFiles = async (
 
 // API call for send data to FileReciver API
 async function doPostRequest(payload: any) {
-  console.log("payload", payload);
-  let res = await axios.post(`${process.env.apiURL}`, payload);
-  let data = res;
-  console.log("API resp", data.data);
+  try {
+    console.log("payload", payload);
+    const res = await axios.post(`${process.env.apiURL}`, payload);
+    console.log("API resp", res.data);
+    if (res.status === 200) {
+      // delete file after success from File Reciver API
+      for (let i = 0; i < payload.downloadedFiles.length; i++) {
+        const filePath = payload.downloadedFiles[i];
+        const deleteFile = await sftp.delete(filePath);
+        console.log(filePath, "File deleted", deleteFile);
+      }
+    }
+  } catch (error) {
+    console.log("Error in doPostRequest", error);
+  }
 }
 
 app.listen(3000, function() {
