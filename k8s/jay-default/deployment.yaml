@@ -1,0 +1,91 @@
+# Service deployment yml file configuration
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sftp-background-service
+  namespace: default
+  labels:
+    app: sftp-background-service
+spec:
+  replicas: 2 # number of pods
+  selector:
+    matchLabels:
+      app: sftp-background-service
+  template:
+    metadata:
+      labels:
+        app: sftp-background-service
+    spec:
+      containers:
+        - name: docker-image-1
+          image: gcr.io/ge-dms-jay/ge-image:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+              protocol: TCP
+          env:
+            - name: CLIENT_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: sftp-service-secret
+                  key: CLIENT_EMAIL
+            - name: CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: sftp-service-secret
+                  key: CLIENT_ID
+            - name: PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sftp-service-secret
+                  key: PRIVATE_KEY
+            - name: PROJECT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: sftp-service-secret
+                  key: PROJECT_ID
+            - name: TOKEN_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sftp-service-secret
+                  key: TOKEN_URL
+            - name: allFileExtension
+              valueFrom:
+                secretKeyRef:
+                  name: sftp-service-secret
+                  key: allFileExtension
+            - name: apiURL
+              valueFrom:
+                secretKeyRef:
+                  name: sftp-service-secret
+                  key: apiURL
+            - name: bucketName
+              valueFrom:
+                secretKeyRef:
+                  name: sftp-service-secret
+                  key: bucketName
+            - name: destinationPath
+              valueFrom:
+                secretKeyRef:
+                  name: sftp-service-secret
+                  key: destinationPath
+            - name: ftpServerPath
+              valueFrom:
+                secretKeyRef:
+                  name: sftp-service-secret
+                  key: ftpServerPath
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sftp-background-svc-service
+  namespace: default
+spec:
+  type: NodePort
+  selector:
+    app: sftp-background-service
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+      nodePort: 30100
