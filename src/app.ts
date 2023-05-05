@@ -14,7 +14,7 @@ const gcpConfig = {
     token_url: process.env.TOKEN_URL,
     client_email: process.env.CLIENT_EMAIL,
     client_id: process.env.CLIENT_ID,
-    private_key: process.env.PRIVATE_KEY,
+    private_key: process.env.PRIVATE_KEY!.split(String.raw`\n`).join("\n"),
   },
 };
 
@@ -47,7 +47,7 @@ app.use(
 app.use(bodyParser.json());
 
 //This POST API will upload the downloaded files to Google storage area in the bucket
-app.post("/", (req: any, res: any) => {
+app.post("/", async (req: any, res: any) => {
   console.log("req.body.downloadedFiles", req.body.downloadedFiles);
   for (let i = 0; i < req.body.downloadedFiles.length; i++) {
     const parentFolderName = req.body.downloadedFiles[i].split("/")[0];
@@ -65,38 +65,26 @@ app.post("/", (req: any, res: any) => {
     //   ? `QAR/${parentFolderName}/${year}/${month}/${date}/`
     //   : "ODW_data_files/";
     //This function will upload the files to bucket
-    Bucket.upload(
+
+    const upload = await Bucket.upload(
       `${process.env.destinationPath}${fileName}`,
       {
         destination: `${destinationFolder}${fileName}`,
-      },
-      function(err: any, file: any) {
-        if (err) {
-          console.error(`Error uploading file: ${err}`);
-        } else {
-          console.log(`File uploaded to ${bucketName}.`);
-
-          // send message to GCP Pub/Sub
-          const payload = JSON.stringify({
-            fileType: "QAR",
-            // fileType: fileName.includes("QAR") ? "QAR" : "ODW",
-            fileName: fileName,
-            bucketName,
-            fileLocation: `https://storage.googleapis.com/${bucketName}/${destinationFolder}${fileName}`,
-          });
-          const payloadBuffer = Buffer.from(payload);
-          pubsub
-            .topic("ge-queue")
-            .publishMessage({ data: payloadBuffer }, (error, messageId) => {
-              if (error) {
-                console.log("Publish message Error", error);
-              } else {
-                console.log("Publish message Success messageId: ", messageId);
-              }
-            });
-        }
       }
     );
+    console.log("file uploaded ", fileName, " on bucket ", bucketName);
+    const payload = JSON.stringify({
+      fileType: "QAR",
+      // fileType: fileName.includes("QAR") ? "QAR" : "ODW",
+      fileName: fileName,
+      bucketName,
+      fileLocation: `https://storage.googleapis.com/${bucketName}/${destinationFolder}${fileName}`,
+    });
+    const payloadBuffer = Buffer.from(payload);
+    const sendMessage = await pubsub
+      .topic("ge-queue")
+      .publishMessage({ data: payloadBuffer });
+    console.log("sendMessage", sendMessage);
   }
   res.status(200).json({
     status: 200,
@@ -166,7 +154,12 @@ const downloadFiles = async (
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const fileExtension = file.name.split(".")[1];
-      const filePath = join(path, file.name);
+      let filePath;
+      if (path !== "/") {
+        filePath = join(path, file.name);
+      } else {
+        filePath = file.name;
+      }
       const stat = await sftp.stat(filePath);
       // console.log("stat of ", file.name);
       // console.log("stat", stat);
@@ -183,17 +176,7 @@ const downloadFiles = async (
             `${filePath}`,
             `${process.env.destinationPath}${file.name}`
           );
-          const removePath = path.split("/")[1];
-          // if (filesArray.length > 0) {
-          //   await filesArray.find((d: any, i: number) => {
-          //     if (d.folderName == path) {
-          //       filesArray[i].fileName.push(file.name);
-          //       return true;
-          //     }
-          //   });
-          // } else {
-          //   filesArray.push({ folderName: path, fileName: [] });
-          // }
+          const removePath = path.replace(/\\/g, "");
           filesArray.push(`${removePath}/${file.name}`);
         }
       }
@@ -210,7 +193,7 @@ async function doPostRequest(payload: any) {
   console.log("payload", payload);
   let res = await axios.post(`${process.env.apiURL}`, payload);
   let data = res;
-  console.log("API resp", data);
+  console.log("API resp", data.data);
 }
 
 app.listen(3000, function() {

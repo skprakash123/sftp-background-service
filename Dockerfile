@@ -1,5 +1,5 @@
 # version of node to use
-FROM node:18
+FROM node:16
 # define working directory for docker
 WORKDIR /usr/src/app
 # copy all our source code into the working directory
