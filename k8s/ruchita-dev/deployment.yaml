@@ -2,19 +2,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sftp-background-service
+  name: sftp-background-deployment
   namespace: default
   labels:
-    app: sftp-background-service
+    app: sftp-background-deployment
 spec:
   replicas: 2 # number of pods
   selector:
     matchLabels:
-      app: sftp-background-service
+      app: sftp-background-deployment
   template:
     metadata:
       labels:
-        app: sftp-background-service
+        app: sftp-background-deployment
     spec:
       containers:
         - name: docker-image-1
@@ -74,3 +74,18 @@ spec:
                     secretKeyRef:
                       name: sftp-service-secret
                       key: ftpServerPath
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sftp-background-service
+  namespace: default
+spec:
+  type: NodePort
+  selector:
+    app: sftp-background-deployment
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+      nodePort: 30100
