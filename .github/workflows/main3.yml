@@ -10,3 +10,18 @@ env:
   DEPLOYMENT_NAME: sftp-background-deployment # TODO: update to deployment name
   REPOSITORY: buildrepo # TODO: update to Artifact Registry docker repository
   IMAGE: image1
+  jobs:
+     setup-build-publish-deploy:
+       name: Setup, Build, Publish, and Deploy
+       runs-on: ubuntu-latest
+       environment: dev
+       permissions:
+         contents: 'read'
+         id-token: 'write'
+       steps:
+       - name: Checkout
+         uses: actions/checkout@v1
+       - id: 'auth'
+       uses: 'google-github-actions/auth@v0'
+       with:
+           credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
